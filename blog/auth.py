@@ -2,27 +2,28 @@ from functools import wraps
 from flask import request, Response, session
 from blog import config
 from blog import db
-
-import hashlib
+import bcrypt
 
 def check_auth(username, password):
     """ This function is called to check if a username / password
         combination is valid.
     """
     cur = db.connection.cursor()
-    hashsed_password = hashlib.md5(password.encode()).hexdigest()
-    cur.execute(f"SELECT * FROM users WHERE email='{username}' AND password='{hashsed_password}'")
+    cur.execute(f"SELECT * FROM users WHERE email='{username}'")
     user = cur.fetchone()
 
     if user is None:
         return False
 
-    session["is_logged_in"] = True
-    session["id"] = user.get("id")
-    session["email"] = user.get("email")
-    session["full_name"] = user.get("full_name")
-
-    return True
+    stored_password = user.get("password").encode('utf-8')
+    if bcrypt.checkpw(password.encode('utf-8'), stored_password):
+        session["is_logged_in"] = True
+        session["id"] = user.get("id")
+        session["email"] = user.get("email")
+        session["full_name"] = user.get("full_name")
+        return True
+    else:
+        return False
 
     # return username == config.username and password == config.password
 
